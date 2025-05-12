@@ -12,7 +12,7 @@ class nodoArbol {
     public nodoArbol(int m, boolean izquierda) {
         this.m = m;
         this.izquierda = izquierda;
-        this.llaves = new int[m - 1];
+        this.llaves = new int[m - 1]; // Máximo de m-1 claves
         this.hijos = new nodoArbol[m];
         this.n = 0;
     }
@@ -170,62 +170,91 @@ class nodoArbol {
         n--;
     }
 
+    // Método insertarNodoNoLleno revisado para comportarse como en la prueba de escritorio
     public void insertarNodoNoLleno(int k) {
         int i = n - 1;
 
+        // Si es una hoja, insertamos directamente
         if (izquierda) {
+            // Movemos todas las claves mayores a la derecha
             while (i >= 0 && llaves[i] > k) {
                 llaves[i + 1] = llaves[i];
                 i--;
             }
+            // Insertamos la nueva clave en su posición ordenada
             llaves[i + 1] = k;
             n++;
         } else {
-            while (i >= 0 && llaves[i] > k)
+            // Si es un nodo interno, buscamos el hijo adecuado
+            while (i >= 0 && llaves[i] > k) {
                 i--;
-
-            if (hijos[i + 1].n == m - 1) {
-                dividirNodo(i + 1, hijos[i + 1]);
-
-                if (llaves[i + 1] < k)
-                    i++;
             }
-            hijos[i + 1].insertarNodoNoLleno(k);
+            i++;
+            
+            // Si el hijo está lleno, lo dividimos antes de insertar
+            if (hijos[i].n == m - 1) {
+                dividirNodo(i, hijos[i]);
+                // Después de dividir, la clave mediana está en este nodo
+                // Así que necesitamos determinar qué hijo recibirá k
+                if (k > llaves[i]) {
+                    i++;
+                }
+            }
+            
+            // Insertamos en el hijo adecuado
+            hijos[i].insertarNodoNoLleno(k);
         }
     }
 
+    // Método dividirNodo revisado para seguir el comportamiento de la prueba de escritorio
     public void dividirNodo(int i, nodoArbol y) {
+        // Para m=3, la división debe ocurrir en el medio (índice 1)
+        int t = (m - 1) / 2;
+        
+        // Creamos un nuevo nodo que será el hermano derecho
         nodoArbol z = new nodoArbol(m, y.izquierda);
-        z.n = (m - 1) / 2;
         
-        // Cambio clave: Usar posición fija para la división
-        int pivot = (m - 1) / 2;  // posición media exacta
-        
-        for (int j = 0; j < z.n; j++)
-            z.llaves[j] = y.llaves[j + pivot + 1];
-        
-        if (!y.izquierda) {
-            for (int j = 0; j <= z.n; j++)
-                z.hijos[j] = y.hijos[j + pivot + 1];
+        // Copiamos las claves a la derecha del punto medio al nuevo nodo
+        z.n = m - 1 - t - 1;
+        for (int j = 0; j < z.n; j++) {
+            z.llaves[j] = y.llaves[j + t + 1];
         }
         
-        y.n = pivot;  // ajustar tamaño
+        // Si no es hoja, copiamos también los hijos correspondientes
+        if (!y.izquierda) {
+            for (int j = 0; j <= z.n; j++) {
+                z.hijos[j] = y.hijos[j + t + 1];
+            }
+            // Aseguramos que los hijos antiguos no queden referenciados doblemente
+            for (int j = t + 1; j <= y.n; j++) {
+                y.hijos[j] = null;
+            }
+        }
         
-        // Mover hijos del nuevo nodo
-        for (int j = n; j >= i + 1; j--)
+        // Reducimos el número de claves en y
+        y.n = t;
+        
+        // Hacemos espacio para el nuevo hijo
+        for (int j = n; j > i; j--) {
             hijos[j + 1] = hijos[j];
+        }
         
+        // Conectamos el nuevo nodo como hijo
         hijos[i + 1] = z;
         
-        // Mover claves
-        for (int j = n - 1; j >= i; j--)
+        // Hacemos espacio para la nueva clave
+        for (int j = n - 1; j >= i; j--) {
             llaves[j + 1] = llaves[j];
+        }
         
-        llaves[i] = y.llaves[pivot];  // promover el elemento medio exacto
+        // Copiamos la clave mediana desde y a este nodo
+        llaves[i] = y.llaves[t];
+        
+        // Incrementamos el número de claves
         n++;
     }
 
-    public boolean buscar (int k) {
+    public boolean buscar(int k) {
         int i = 0;
         while (i < n && k > llaves[i])
             i++;
@@ -236,7 +265,7 @@ class nodoArbol {
         if (izquierda)
             return false;
 
-        return hijos[i].buscar (k);
+        return hijos[i].buscar(k);
     }
 }
 
@@ -249,27 +278,62 @@ class BTree {
         this.m = m;
     }
 
+    // Método insert revisado para que las divisiones resulten en la estructura esperada
     public void insert(int k) {
+        // Si el árbol está vacío
         if (root == null) {
             root = new nodoArbol(m, true);
             root.llaves[0] = k;
             root.n = 1;
+            return;
+        }
+        
+        // Si la raíz está llena, necesitamos dividirla
+        if (root.n == m - 1) {
+            // Creamos una nueva raíz
+            nodoArbol s = new nodoArbol(m, false);
+            // La antigua raíz se convierte en el primer hijo
+            s.hijos[0] = root;
+            // Dividimos la antigua raíz
+            s.dividirNodo(0, root);
+            
+            // Determinamos en qué hijo insertar la nueva clave
+            int i = 0;
+            if (s.llaves[0] < k) {
+                i++;
+            }
+            // Insertamos en el hijo apropiado
+            s.hijos[i].insertarNodoNoLleno(k);
+            
+            // La nueva raíz es s
+            root = s;
         } else {
-            if (root.n == m - 1) {
-                nodoArbol s = new nodoArbol(m, false);
-                s.hijos[0] = root;
-                s.dividirNodo(0, root);
+            // Si la raíz no está llena, insertamos normalmente
+            root.insertarNodoNoLleno(k);
+        }
+    }
 
-                int i = 0;
-                if (s.llaves[0] < k)
-                    i++;
-                s.hijos[i].insertarNodoNoLleno(k);
+    public boolean verificarConsistencia() {
+        return root == null || verificarNodo(root, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
 
-                root = s;
-            } else {
-                root.insertarNodoNoLleno(k);
+    private boolean verificarNodo(nodoArbol nodo, int min, int max) {
+        // Verificar claves en orden y en rango
+        for (int i = 0; i < nodo.n; i++) {
+            if (nodo.llaves[i] <= min || nodo.llaves[i] >= max)
+                return false;
+        }
+        
+        // Verificar hijos recursivamente
+        if (!nodo.izquierda) {
+            for (int i = 0; i <= nodo.n; i++) {
+                int nuevoMin = (i == 0) ? min : nodo.llaves[i-1];
+                int nuevoMax = (i == nodo.n) ? max : nodo.llaves[i];
+                if (!verificarNodo(nodo.hijos[i], nuevoMin, nuevoMax))
+                    return false;
             }
         }
+        return true;
     }
 
     public void eliminar(int k) {
@@ -288,16 +352,17 @@ class BTree {
         }
     }
 
+    // Mejorado para mostrar mejor la estructura del árbol
     public void display() {
         if (root != null) {
             System.out.println("Estructura del Árbol B (m=" + m + "):");
-            displayReauxsive(root, 0);
+            displayRecursive(root, 0);
         } else {
             System.out.println("El árbol está vacío");
         }
     }
 
-    private void displayReauxsive(nodoArbol node, int level) {
+    private void displayRecursive(nodoArbol node, int level) {
         System.out.print("Nivel " + level + ": ");
         for (int i = 0; i < node.n; i++) {
             System.out.print(node.llaves[i] + " ");
@@ -307,14 +372,14 @@ class BTree {
         if (!node.izquierda) {
             for (int i = 0; i <= node.n; i++) {
                 if (node.hijos[i] != null) {
-                    displayReauxsive(node.hijos[i], level + 1);
+                    displayRecursive(node.hijos[i], level + 1);
                 }
             }
         }
     }
 
-    public boolean buscar (int k) {
-        return (root == null) ? false : root.buscar (k);
+    public boolean buscar(int k) {
+        return (root == null) ? false : root.buscar(k);
     }
 }
 
@@ -324,10 +389,10 @@ public class Main {
         BTree bTree = null;
 
         System.out.println("Bienvenido al Árbol B");
-        System.out.print("Ingrese el grado m del árbol: ");
+        System.out.print("Ingrese el grado m del árbol : ");
         int m = scanner.nextInt();
         scanner.nextLine(); // Consumir el salto de línea
-        
+
         if (m >= 3) {
             bTree = new BTree(m);
             System.out.println("\nÁrbol B creado con m = " + m);
@@ -335,15 +400,15 @@ public class Main {
             System.out.println("Mínimo de claves por nodo (excepto raíz): " + ((m - 1) / 2));
             System.out.println("Máximo de hijos por nodo: " + m);
             System.out.println("Mínimo de hijos por nodo (excepto raíz): " + (m / 2));
-            
+
             System.out.print("\nIngrese todos los elementos separados por espacios: ");
             String input = scanner.nextLine();
-            
+
             try {
                 int[] elementos = Arrays.stream(input.split("\\s+"))
-                                      .mapToInt(Integer::parseInt)
-                                      .toArray();
-                
+                        .mapToInt(Integer::parseInt)
+                        .toArray();
+
                 System.out.println("\nInsertando elementos...");
                 for (int valor : elementos) {
                     bTree.insert(valor);
@@ -354,44 +419,52 @@ public class Main {
                 System.out.println("Error: Por favor ingrese solo números separados por espacios.");
                 System.exit(1);
             }
+
+            // Menú interactivo
+            int opcion;
+            do {
+                System.out.println("\n--- MENÚ ---");
+                System.out.println("1. Insertar un elemento");
+                System.out.println("2. Eliminar un elemento");
+                System.out.println("3. Buscar un elemento");
+                System.out.println("4. Mostrar árbol");
+                System.out.println("5. Salir");
+                System.out.print("Seleccione una opción: ");
+                opcion = scanner.nextInt();
+
+                switch (opcion) {
+                    case 1:
+                        System.out.print("Ingrese el valor a insertar: ");
+                        int insertar = scanner.nextInt();
+                        bTree.insert(insertar);
+                        System.out.println("Elemento insertado.");
+                        break;
+                    case 2:
+                        System.out.print("Ingrese el valor a eliminar: ");
+                        int eliminar = scanner.nextInt();
+                        bTree.eliminar(eliminar);
+                        break;
+                    case 3:
+                        System.out.print("Ingrese el valor a buscar: ");
+                        int buscar = scanner.nextInt();
+                        boolean encontrado = bTree.buscar(buscar);
+                        System.out.println("Resultado de la búsqueda: " + (encontrado ? "Encontrado" : "No encontrado"));
+                        break;
+                    case 4:
+                        bTree.display();
+                        break;
+                    case 5:
+                        System.out.println("Saliendo del programa...");
+                        break;
+                    default:
+                        System.out.println("Opción inválida. Intente de nuevo.");
+                }
+            } while (opcion != 5);
+
         } else {
-            System.out.println("El valor de m debe ser al menos 3");
-            System.exit(1);
+            System.out.println("El grado del árbol B debe ser al menos 3.");
         }
 
-        // Menú principal
-        while (true) {
-            System.out.println("\nMenú del Árbol B");
-            System.out.println("1. Insertar elemento");
-            System.out.println("2. Eliminar elemento");
-            System.out.println("3. Mostrar árbol");
-            System.out.println("4. Salir");
-            System.out.print("Seleccione una opción: ");
-
-            int opcion = scanner.nextInt();
-
-            switch (opcion) {
-                case 1:
-                    System.out.print("Ingrese el valor a insertar: ");
-                    int valorInsertar = scanner.nextInt();
-                    bTree.insert(valorInsertar);
-                    System.out.println("Valor " + valorInsertar + " insertado");
-                    break;
-                case 2:
-                    System.out.print("Ingrese el valor a eliminar: ");
-                    int valorEliminar = scanner.nextInt();
-                    bTree.eliminar(valorEliminar);
-                    break;
-                case 3:
-                    bTree.display();
-                    break;
-                case 4:
-                    System.out.println("Saliendo del programa...");
-                    scanner.close();
-                    System.exit(0);
-                default:
-                    System.out.println("Opción no válida");
-            }
-        }
+        scanner.close();
     }
 }
