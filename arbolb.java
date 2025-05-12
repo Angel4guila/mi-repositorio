@@ -1,4 +1,4 @@
-package ArbolB;
+package ArbolBB;
 import java.util.Scanner;
 import java.util.Arrays;
 
@@ -206,53 +206,37 @@ class nodoArbol {
         }
     }
 
-    // Método dividirNodo revisado para seguir el comportamiento de la prueba de escritorio
-    public void dividirNodo(int i, nodoArbol y) {
-        // Para m=3, la división debe ocurrir en el medio (índice 1)
-        int t = (m - 1) / 2;
-        
-        // Creamos un nuevo nodo que será el hermano derecho
-        nodoArbol z = new nodoArbol(m, y.izquierda);
-        
-        // Copiamos las claves a la derecha del punto medio al nuevo nodo
-        z.n = m - 1 - t - 1;
-        for (int j = 0; j < z.n; j++) {
-            z.llaves[j] = y.llaves[j + t + 1];
-        }
-        
-        // Si no es hoja, copiamos también los hijos correspondientes
-        if (!y.izquierda) {
-            for (int j = 0; j <= z.n; j++) {
-                z.hijos[j] = y.hijos[j + t + 1];
-            }
-            // Aseguramos que los hijos antiguos no queden referenciados doblemente
-            for (int j = t + 1; j <= y.n; j++) {
-                y.hijos[j] = null;
-            }
-        }
-        
-        // Reducimos el número de claves en y
-        y.n = t;
-        
-        // Hacemos espacio para el nuevo hijo
-        for (int j = n; j > i; j--) {
-            hijos[j + 1] = hijos[j];
-        }
-        
-        // Conectamos el nuevo nodo como hijo
-        hijos[i + 1] = z;
-        
-        // Hacemos espacio para la nueva clave
-        for (int j = n - 1; j >= i; j--) {
-            llaves[j + 1] = llaves[j];
-        }
-        
-        // Copiamos la clave mediana desde y a este nodo
-        llaves[i] = y.llaves[t];
-        
-        // Incrementamos el número de claves
-        n++;
+public void dividirNodo(int i, nodoArbol y) {
+    int t = (m % 2 == 0) ? (m / 2 - 1) : ((m - 1) / 2);  // Manejo para m par e impar
+    nodoArbol z = new nodoArbol(m, y.izquierda);
+    z.n = y.n - t - 1;  // Número de claves que van a z
+
+    // Copiar claves mayores al nuevo nodo z
+    for (int j = 0; j < z.n; j++) {
+        z.llaves[j] = y.llaves[j + t + 1];
     }
+
+    // Si no es hoja, copiar los hijos correspondientes
+    if (!y.izquierda) {
+        for (int j = 0; j <= z.n; j++) {
+            z.hijos[j] = y.hijos[j + t + 1];
+        }
+    }
+
+    y.n = t;  // Actualizar número de claves en y
+
+    // Hacer espacio en el padre para la nueva clave e hijo
+    for (int j = n; j > i; j--) {
+        hijos[j + 1] = hijos[j];
+    }
+    hijos[i + 1] = z;
+
+    for (int j = n - 1; j >= i; j--) {
+        llaves[j + 1] = llaves[j];
+    }
+    llaves[i] = y.llaves[t];  // Clave mediana sube al padre
+    n++;
+}
 
     public boolean buscar(int k) {
         int i = 0;
@@ -362,21 +346,21 @@ class BTree {
         }
     }
 
-    private void displayRecursive(nodoArbol node, int level) {
-        System.out.print("Nivel " + level + ": ");
-        for (int i = 0; i < node.n; i++) {
-            System.out.print(node.llaves[i] + " ");
+        private void displayRecursive(nodoArbol nodo, int nivel) {
+        System.out.print("Nivel " + nivel + " [");
+        for (int i = 0; i < nodo.n; i++) {
+            System.out.print(nodo.llaves[i]);
+            if (i != nodo.n - 1) System.out.print(", ");
         }
-        System.out.println();
+        System.out.println("]");
 
-        if (!node.izquierda) {
-            for (int i = 0; i <= node.n; i++) {
-                if (node.hijos[i] != null) {
-                    displayRecursive(node.hijos[i], level + 1);
-                }
+        if (!nodo.izquierda) {
+            for (int i = 0; i <= nodo.n; i++) {
+                displayRecursive(nodo.hijos[i], nivel + 1);
             }
         }
     }
+
 
     public boolean buscar(int k) {
         return (root == null) ? false : root.buscar(k);
